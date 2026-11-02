@@ -1,0 +1,33 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "calibration (derived, local)",
+ "type": "object",
+ "required": [
+  "schema_version",
+  "sizes",
+  "cells",
+  "attribution",
+  "window",
+  "data"
+ ],
+ "properties": {
+  "schema_version": {
+   "const": 1
+  },
+  "sizes": {
+   "type": "object"
+  },
+  "cells": {
+   "type": "object"
+  },
+  "attribution": {
+   "type": "object"
+  },
+  "window": {
+   "type": "object"
+  },
+  "data": {
+   "type": "object"
+  }
+ }
+}

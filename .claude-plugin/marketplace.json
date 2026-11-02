@@ -1,0 +1,15 @@
+{
+  "name": "measured-estimates",
+  "description": "One plugin: measured-estimates, estimates from measured past work.",
+  "owner": {
+    "name": "iretonsean"
+  },
+  "plugins": [
+    {
+      "name": "measured-estimates",
+      "source": "./",
+      "description": "Estimates of tokens and time from what your own past tasks really cost.",
+      "version": "0.1.0"
+    }
+  ]
+}

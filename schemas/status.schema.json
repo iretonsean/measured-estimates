@@ -1,0 +1,75 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "status",
+ "type": "object",
+ "additionalProperties": false,
+ "properties": {
+  "schema_version": {
+   "const": 1
+  },
+  "warnings": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "at",
+     "code"
+    ],
+    "properties": {
+     "at": {
+      "type": "string",
+      "pattern": "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+     },
+     "code": {
+      "enum": [
+       "format",
+       "deadline",
+       "lock",
+       "newer-schema"
+      ]
+     }
+    }
+   }
+  },
+  "sync": {
+   "anyOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "at",
+      "result",
+      "code"
+     ],
+     "properties": {
+      "at": {
+       "type": "string",
+       "pattern": "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+      },
+      "result": {
+       "enum": [
+        "ok",
+        "fail"
+       ]
+      },
+      "code": {
+       "enum": [
+        "ok",
+        "sync-auth",
+        "sync-network",
+        "sync-conflict",
+        "sync-timeout",
+        "sync-refused",
+        "sync-error"
+       ]
+      }
+     }
+    }
+   ]
+  }
+ }
+}

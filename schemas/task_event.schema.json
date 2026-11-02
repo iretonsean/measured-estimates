@@ -1,0 +1,246 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "task event",
+ "type": "object",
+ "required": [
+  "schema_version",
+  "type",
+  "id",
+  "at",
+  "machine"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "schema_version": {
+   "const": 1
+  },
+  "type": {
+   "enum": [
+    "estimate",
+    "done"
+   ]
+  },
+  "id": {
+   "type": "string",
+   "pattern": "[A-Za-z0-9#._:-]{1,64}"
+  },
+  "at": {
+   "type": "string",
+   "pattern": "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+  },
+  "machine": {
+   "type": "string",
+   "pattern": "[0-9a-f]{16}"
+  },
+  "size": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "[A-Z]{1,4}(-[A-Z]{1,4})?"
+  },
+  "kind": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "[A-Za-z0-9 _-]{1,32}"
+  },
+  "effort": {
+   "type": [
+    "string",
+    "null"
+   ],
+   "pattern": "[a-z0-9-]{1,16}"
+  },
+  "guess": {
+   "anyOf": [
+    {
+     "type": "null"
+    },
+    {
+     "type": "array",
+     "items": {
+      "type": "number",
+      "minimum": 0
+     }
+    }
+   ]
+  },
+  "range50": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "tokens": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     ]
+    },
+    "active_h": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     ]
+    },
+    "elapsed_h": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     ]
+    }
+   }
+  },
+  "range80": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "tokens": {
+     "anyOf": [
+      {
+       "type": "null"
+      },
+      {
+       "type": "array",
+       "items": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     ]
+    }
+   }
+  },
+  "n": {
+   "type": "integer",
+   "minimum": 0
+  },
+  "source": {
+   "enum": [
+    "own",
+    "starter"
+   ]
+  },
+  "confidence": {
+   "enum": [
+    "good",
+    "low",
+    "rough"
+   ]
+  },
+  "narrow": {
+   "type": "boolean"
+  },
+  "calibration_at": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "actual": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "fresh",
+    "by_role",
+    "measured"
+   ],
+   "properties": {
+    "fresh": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "by_role": {
+     "type": "object",
+     "additionalProperties": false,
+     "properties": {
+      "build": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "review": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "fix": {
+       "type": "integer",
+       "minimum": 0
+      },
+      "lead": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    },
+    "by_model_effort": {
+     "type": "object"
+    },
+    "dominant_effort": {
+     "type": "string",
+     "pattern": "[a-z0-9-]{1,16}"
+    },
+    "active_h": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "elapsed_h": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "start": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "pattern": "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+    },
+    "end": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "pattern": "\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ"
+    },
+    "sessions": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "machines": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "measured": {
+     "type": "boolean"
+    }
+   }
+  }
+ }
+}

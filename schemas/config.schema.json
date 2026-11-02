@@ -1,0 +1,96 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "config",
+ "type": "object",
+ "required": [
+  "schema_version",
+  "machine_id",
+  "id_patterns"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "schema_version": {
+   "const": 1
+  },
+  "machine_id": {
+   "type": "string",
+   "pattern": "[0-9a-f]{16}"
+  },
+  "id_patterns": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "maxLength": 300
+   }
+  },
+  "commit_ids": {
+   "type": "boolean"
+  },
+  "sizes": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "[A-Z]{1,4}"
+   }
+  },
+  "idle_cap_min": {
+   "type": "number",
+   "minimum": 1
+  },
+  "stop_every_min": {
+   "type": "number",
+   "minimum": 1
+  },
+  "commit_window_min": {
+   "type": "number",
+   "minimum": 1
+  },
+  "backfill_days": {
+   "type": "integer",
+   "minimum": 1
+  },
+  "ignore_paths": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "store": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "cwd": {
+     "type": "boolean"
+    },
+    "branch": {
+     "type": "boolean"
+    },
+    "repo": {
+     "type": "boolean"
+    },
+    "title": {
+     "type": "boolean"
+    }
+   }
+  },
+  "sync": {
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "remote": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "branch": {
+     "type": "string",
+     "pattern": "[A-Za-z0-9._/-]{1,64}"
+    }
+   }
+  },
+  "initialized": {
+   "type": "boolean"
+  }
+ }
+}

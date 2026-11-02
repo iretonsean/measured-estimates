@@ -1,0 +1,10 @@
+{
+  "name": "measured-estimates",
+  "version": "0.1.0",
+  "description": "Estimates of tokens and time from what your own past tasks really cost. Records each Claude Code session's token use on your machine; nothing leaves it unless you set up sync. macOS and Linux (Windows isn't supported yet).",
+  "author": {"name": "iretonsean"},
+  "homepage": "https://github.com/iretonsean/measured-estimates",
+  "repository": "https://github.com/iretonsean/measured-estimates",
+  "license": "MIT",
+  "keywords": ["estimates", "tokens", "calibration", "planning", "ledger"]
+}
