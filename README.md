@@ -16,8 +16,33 @@ A Claude Code plugin. Your coding agent estimates tokens and time from what your
 ## How accurate is it?
 
 <!-- results:start -->
-The numbers for this section come from `docs/RESULTS.md`. The pre-registered evaluation (`docs/EVALUATION.md`) hasn't
-run yet, so this section shows no numbers.
+All numbers here come from `docs/RESULTS.md`. They come from one developer's tasks, with a pre-registered test.
+
+**The problem.** We compared the agent's guesses with the measured cost of 82 finished tasks, over 8 days of work.
+
+- The measured cost was a median 0.44 of the middle of the guess.
+- 51 tasks cost less than the low end of the guess. 25 were inside the guess. 6 cost more.
+- The measured cost counts only the tokens tied to a task: 69% of all tokens in those weeks.
+- So part of this gap comes from untied tokens, not from high guesses.
+
+**What calibration changed.** We tested on 30 tasks, each estimated only from tasks finished before it started.
+
+- Median error was 0.34 for the calibrated ranges and 0.56 for the guesses (0.69 means a miss by a factor of 2).
+- Against the guesses: difference -0.22, 90% interval [-0.50, 0.12].
+- Against the guesses with their average bias removed: difference -0.08, 90% interval [-0.29, 0.10].
+- Against ranges that ignore the task size: difference -0.21, 90% interval [-0.45, 0.16].
+- The 50% range held the real cost for 67% of tasks [31%, 81%]. The 80% range held it for 93% [86%, 100%].
+- The bias of the calibrated ranges is unclear: 0.00, 90% interval [-0.24, 0.60].
+
+**The verdict: inconclusive, all three comparisons and the range check.** The test points fall on 5 days. The
+pre-registered minimum is 8 days. The point values favour calibration, but each interval reaches above 0.
+
+**Not shown yet.** We can't show that accuracy improves as your own tasks replace the starter ranges. One person's
+three weeks of data can't show that. On your own data, `ledger report` shows your error, coverage and bias per month
+and per 10 finished tasks. It compares each first estimate with the measured cost.
+
+**Effort level.** The data records the effort level, but most cells have fewer than 5 tasks. The results show it only
+as a description.
 <!-- results:end -->
 
 ## Install
@@ -92,7 +117,8 @@ touch Claude Code's own session files or your sync repo. Uninstalling the plugin
 
 ## Limits
 
-- It works with Claude Code only. Other agents can be added with an adapter (see `CONTRIBUTING.md`).
+- The accuracy test so far is inconclusive: too few days of finished tasks (see above).
+- It works with Claude Code only. You can add other agents with an adapter (see `CONTRIBUTING.md`).
 - It runs on macOS and Linux. Windows isn't supported yet.
 - The starter ranges come from one person's workflow. Treat them as a start.
 - Per-task costs count only the tokens tied to tasks. The report shows that share and the overhead factor.

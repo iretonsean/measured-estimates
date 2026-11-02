@@ -394,7 +394,10 @@ def h3_proxy(train, test, n_draws=200, n_boot=B, seed=SEED):
         d3 = stat(list(range(len(test))))
         boots = cluster_bootstrap(cl, stat, n_boot, seed)
         ci = interval(boots)
-        v = 'pass' if ci and ci[1] < 0 else 'fail' if d3 >= 0 else 'inconclusive'
+        if len(test) < MIN_TEST or len(cl) < MIN_DAYS:  # section 5: the minimum-data rule holds for this design too
+            v = 'inconclusive (too little data)'
+        else:
+            v = 'pass' if ci and ci[1] < 0 else 'fail' if d3 >= 0 else 'inconclusive'
         res['D3'] = {'n': len(test), 'days': len(cl), 'D3': r4(d3), 'ci90': rr(ci), 'verdict': v,
                      'note': 'random subsamples, not in time order; a pass does not prove H3'}
     return res

@@ -372,7 +372,10 @@ must not import anything agent-specific. v0.1.0 ships the Claude Code adapter on
 add to the person's hooks and never edit their settings files.
 - T-87 (X) Install in a scratch home on Linux and on macOS; a session end writes a ledger line, also for a
   generated 5,000-message transcript (the child outlives the host process).
-- T-88 (X) The person's existing `settings.json` is byte-identical after install and after uninstall.
+- T-88 (X) The person's own `hooks` in `settings.json` keep the same JSON value after install and after uninstall.
+  Only the keys that Claude Code itself writes for plugins (`enabledPlugins`, `extraKnownMarketplaces`) change.
+  (Amended during verification: Claude Code rewrites and reformats `settings.json` on install, so the first
+  wording, "byte-identical", can't hold for any plugin.)
 - T-89 (C) A CI job checks that `plugin.json`, `marketplace.json` and `hooks.json` parse and name existing files.
 
 **REQ-32 Runtime.** Python 3.9 or newer, standard library only (no `match`, no runtime `X | Y` types, no
