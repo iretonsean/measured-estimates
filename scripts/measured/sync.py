@@ -5,9 +5,10 @@ machine's two files are added, by path. A failure is a fixed code in status.json
 """
 from __future__ import annotations
 
-import glob
 import os
+import re
 import shutil
+import stat
 import subprocess
 import time
 
@@ -15,6 +16,9 @@ from . import paths, store
 
 TOTAL_S = 60
 STOP_EVERY_S = 15 * 60
+MAX_FILE = 50 * 1024 * 1024
+BRANCH_OK = re.compile(r'[A-Za-z0-9._/][A-Za-z0-9._/-]{0,99}')
+NAME_OK = re.compile(r'[0-9a-f]{16}\.jsonl')
 
 
 def sync_env() -> dict:
@@ -50,7 +54,8 @@ def run(cfg: dict, force: bool = False, git: str = 'git') -> str | None:
     if not remote:
         return None
     branch = (cfg.get('sync') or {}).get('branch') or 'measured-estimates'
-    if remote.lower().startswith('http://'):
+    if remote.lower().startswith('http://') or remote.startswith('-') or not BRANCH_OK.fullmatch(branch) \
+            or '..' in branch:
         store.set_sync_result('sync-refused')
         return 'sync-refused'
     st = store.read_status().get('sync') or {}
@@ -96,11 +101,13 @@ def _sync(cfg, remote, branch, clone, git, deadline) -> str:
 
     mid = cfg['machine_id']
     if not os.path.isdir(os.path.join(clone, '.git')):
-        os.makedirs(clone, exist_ok=True)
+        paths.private_dir(clone)
         g('init', '-q')
-        g('remote', 'add', 'origin', remote)
+        g('remote', 'add', '--', 'origin', remote)
     else:
-        g('remote', 'set-url', 'origin', remote)
+        g('remote', 'set-url', '--', 'origin', remote)
+    # Links from the remote are checked out as plain files, never as links (a remote must not reach outside the store).
+    g('config', 'core.symlinks', 'false')
     has_remote = g('fetch', '-q', 'origin', branch, check=False).returncode == 0
     if has_remote:
         g('checkout', '-q', '-B', branch, f'origin/{branch}')
@@ -109,9 +116,17 @@ def _sync(cfg, remote, branch, clone, git, deadline) -> str:
     own = [('ledger', store.ledger_file(mid)), ('tasks', store.tasks_file(mid))]
     rel = []
     for sub, src in own:
+        folder = os.path.join(clone, sub)
+        if os.path.islink(folder) or (os.path.lexists(folder) and not os.path.isdir(folder)):
+            raise SyncFail('sync-refused')  # the remote replaced the folder with a link or a file
         if os.path.isfile(src):
-            os.makedirs(os.path.join(clone, sub), exist_ok=True)
-            shutil.copyfile(src, os.path.join(clone, sub, f'{mid}.jsonl'))
+            os.makedirs(os.path.join(clone, sub), mode=0o700, exist_ok=True)
+            dst = os.path.join(clone, sub, f'{mid}.jsonl')
+            tmp = dst + '.tmp'
+            if os.path.lexists(tmp):
+                os.unlink(tmp)
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, dst)  # replaces a link at dst; never writes through it
             rel.append(f'{sub}/{mid}.jsonl')
     if rel:
         g('add', '--', *rel)
@@ -131,12 +146,35 @@ def _sync(cfg, remote, branch, clone, git, deadline) -> str:
                 break
             if attempt:
                 raise SyncFail(classify(r.stderr))
-    # Copy the other machines' files into the store (never this machine's own files).
+    # Copy the other machines' files into the store (never this machine's own files, never through a link). Their
+    # content is checked line by line when it's read (store.valid_line, store.valid_event).
     for sub, dst_dir in (('ledger', paths.ledger_dir()), ('tasks', paths.tasks_dir())):
-        for p in glob.glob(os.path.join(clone, sub, '*.jsonl')):
-            name = os.path.basename(p)
-            if name == f'{mid}.jsonl':
+        folder = os.path.join(clone, sub)
+        if os.path.islink(folder) or not os.path.isdir(folder):
+            continue
+        for name in sorted(os.listdir(folder)):
+            p = os.path.join(folder, name)
+            if name == f'{mid}.jsonl' or not NAME_OK.fullmatch(name):
                 continue
-            with open(p, encoding='utf-8') as f:
-                store.atomic_write(os.path.join(dst_dir, name), f.read())
+            text = _read_regular(p)
+            if text is not None:
+                store.atomic_write(os.path.join(dst_dir, name), text)
     return 'ok'
+
+
+def _read_regular(p: str):
+    """The text of a regular file of at most 50 MB, opened without following a link; None otherwise."""
+    try:
+        fd = os.open(p, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    except OSError:
+        return None
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_FILE:
+            return None
+        with os.fdopen(fd, 'r', encoding='utf-8', errors='replace') as f:
+            fd = None
+            return f.read()
+    finally:
+        if fd is not None:
+            os.close(fd)

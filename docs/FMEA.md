@@ -73,3 +73,13 @@ silent). **RPN** = S x O x D. Rows with RPN >= 30 or S = 5 need a test before v0
 | FM-31 | Plugin edits the person's settings | The person's own hooks lost | Install script writes settings | 5 | 1 | 2 | 10 | Install test compares `settings.json` | Hooks only through the plugin's `hooks.json` | REQ-31 / T-88 |
 | FM-32 | README claims more than the data shows | People trust wrong numbers | Marketing drift; a hard-coded baseline | 4 | 3 | 3 | 36 | CI number check over the whole section; reviewer | Numbers only from `docs/RESULTS.md`, baseline included; H1a-c stated together; fails stated; attribution caveat | REQ-41 / T-108, T-109, T-110 |
 | FM-33 | Newer schema file overwritten by old code | Data loss after a downgrade | Two plugin versions on two machines | 4 | 2 | 3 | 24 | Unit test | Read-only with a warning for unknown newer versions | REQ-29 / T-84 |
+
+## Added in the final-review fix round
+
+| ID | Failure mode | Effect | Cause | S | O | D | RPN | Detection | Mitigation | REQ / tests |
+|---|---|---|---|---|---|---|---|---|---|---|
+| FM-49 | Malicious sync remote: links | A remote overwrites or reads files outside the store | Sync checked out and followed links from the remote | 5 | 2 | 4 | 40 | Integration test with a remote full of links | `core.symlinks false`; own file written by replace; linked files and folders skipped; files opened without following links | REQ-15 / T-141 |
+| FM-50 | Malformed transcript line aborts the record | A session gets no line and no warning | Deep nesting, `Infinity` in a number | 3 | 2 | 4 | 24 | Fuzz test; warning `error` | Catch the parse errors per line; any other failure in the child writes warning `error` | REQ-12 / T-143 |
+| FM-51 | Records from a sync remote carry bad data | Commands fail, or foreign text reaches the agent | A remote writes another machine's file | 4 | 2 | 3 | 24 | Test with planted foreign files | Every line and event is checked on read (IDs, numbers, schema version); bad ones are skipped | REQ-15 / T-144 |
+| FM-52 | `forget` while the plugin stays installed | The session's own end records again at once | Hooks keep running | 3 | 4 | 3 | 36 | Test: no record after `forget` | Marker file: no recording until `init`; the output and the skill say so | REQ-16 / T-145 |
+| FM-53 | Other local users read the data | Work patterns leak on a shared machine | Folders 0755, git checkout files 0644 | 3 | 2 | 4 | 24 | Test of all modes after init, record and sync | `umask 077` in the hooks and the CLI; folders 0700 | REQ-13 / T-142 |

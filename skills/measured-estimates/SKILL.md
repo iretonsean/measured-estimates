@@ -9,9 +9,10 @@ This plugin records the token use of each Claude Code session on this machine. W
 what it really cost. `estimate` turns those measured tasks into ranges per task size. Until a size has 5 of the
 person's own measured tasks, `estimate` uses a starter table and says so.
 
-How it improves estimates: each finished task adds a measurement, and the ranges come from those measurements, not from
-memory. The evidence and its limits are in the plugin's `docs/RESULTS.md`. Don't quote accuracy numbers that aren't in
-that file.
+How it helps: each finished task adds a measurement, and the ranges come from those measurements, not from memory.
+The test so far is inconclusive: don't say that these ranges are more accurate than a guess. Say that they come from
+measured past work. The evidence and its limits are in the plugin's `docs/RESULTS.md`. Don't quote accuracy numbers
+that aren't in that file.
 
 ## Find the command
 
@@ -26,9 +27,12 @@ Below, `ledger` means `python3 "$ME/scripts/ledger.py"`. Add `--json` to read th
 ## First use
 
 1. Run `ledger report`. If it says "Not set up yet", continue with step 2. Else skip to "Estimate a task".
-2. Ask the person for one example task ID (for example `ENG-42` or `#12`).
-3. Run `ledger init --yes --example <ID>`. Add `--confirm-ids` only if the person says commit messages may be used.
-4. Run `ledger backfill`. It reads the sessions that Claude Code still keeps.
+2. On macOS, if `python3` isn't found or `xcode-select -p` fails, tell the person to install Python 3.9 or newer.
+3. Ask the person for one example task ID (for example `ENG-42` or `#12`).
+4. Ask whether any folders hold work that must not be recorded, for example client work.
+5. Run `ledger init --yes --example <ID>`. Add `--ignore '<folder glob>'` for each such folder.
+6. Add `--confirm-ids` only if the person says commit messages may be used.
+7. Run `ledger backfill`. It reads the sessions that Claude Code still keeps.
 
 Don't set a sync remote unless the person asks for one and gives a private repo they own.
 
@@ -80,6 +84,7 @@ If the report shows a warning about the file format, tell the person to update t
 
 1. Run `ledger forget` to list what it deletes.
 2. Ask the person to confirm.
-3. Run `ledger forget --yes`.
+3. Run `ledger forget --yes`. Recording then stays off until `ledger init` runs again.
+4. If the person wants the plugin gone too, tell them to run `/plugin uninstall measured-estimates`.
 
 Claude Code's own session files and any sync remote stay. Uninstalling the plugin stops recording but keeps the data.

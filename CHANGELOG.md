@@ -12,3 +12,12 @@ Versions follow semantic versioning. Data files carry their own `schema_version`
 - Starter table from one developer's measured work (aggregates only).
 - Pre-registered evaluation (`docs/EVALUATION.md`) and its results (`docs/RESULTS.md`).
 - Schemas version 1 for the ledger line, task events, config, status, calibration and the starter table.
+
+### Known limits
+
+- The pre-registered evaluation is inconclusive: the test tasks ended on 5 days, and the registered minimum is 8.
+- The calibrated ranges held the measured cost more often than they claim on this data (50% range 67%, 80% range
+  93%). The small-n widening of the ranges stays as it is for now. v0.2 will pre-register widened and unwidened ranges
+  as two arms, with coverage per n band, and decide with at least 8 new days of test tasks.
+- The starter table comes from one developer's workflow and has no 80% ranges (they need 20 tasks per size).
+- Claude Code only; macOS and Linux only.

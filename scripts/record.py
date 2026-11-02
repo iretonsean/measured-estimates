@@ -34,13 +34,16 @@ def read_hook_input(stream, limit=1 << 20) -> dict:
 
 
 def spawn_child(reason: str, hook: dict) -> None:
-    """Start the detached child (new session, stdio to /dev/null) and return at once."""
+    """Start the detached child (new session, output to /dev/null) and return at once. The hook JSON goes through a
+    pipe, not the command line, so other local users can't see the transcript path in `ps`."""
     import json
     import subprocess
     small = {k: hook.get(k) for k in ('session_id', 'transcript_path', 'cwd') if isinstance(hook.get(k), str)}
-    subprocess.Popen([sys.executable, os.path.abspath(__file__), 'child', reason, json.dumps(small)],
-                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                     start_new_session=True, close_fds=True, cwd='/')
+    p = subprocess.Popen([sys.executable, os.path.abspath(__file__), 'child', reason],
+                         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True, close_fds=True, cwd='/')
+    p.stdin.write(json.dumps(small).encode('utf-8'))
+    p.stdin.close()
 
 
 def run_child(reason: str, hook: dict) -> None:
@@ -50,6 +53,8 @@ def run_child(reason: str, hook: dict) -> None:
     from measured.recorder import record
     budget = float(os.environ.get('MEASURED_ESTIMATES_DEADLINE_S') or 30)
     deadline = time.monotonic() + budget
+    if os.path.exists(paths.stopped_path()):
+        return  # `forget --yes` turned recording off until `init` runs again
     cfg = paths.ensure_config()
     try:
         store.clean_stamps()
@@ -57,14 +62,13 @@ def run_child(reason: str, hook: dict) -> None:
         pass
     try:
         entry = record(hook, cfg, reason, deadline)
-    except Deadline:
-        store.add_warning('deadline')
-        return
-    except store.LockTimeout:
-        store.add_warning('lock')
-        return
-    except store.NewerSchema:
-        store.add_warning('newer-schema')
+    except Exception as e:  # every failure becomes a warning in the report, never a silent loss
+        code = 'deadline' if isinstance(e, Deadline) else 'lock' if isinstance(e, store.LockTimeout) else \
+            'newer-schema' if isinstance(e, store.NewerSchema) else 'error'
+        try:
+            store.add_warning(code)
+        except OSError:
+            pass
         return
     if entry and (cfg.get('sync') or {}).get('remote'):
         from measured import sync
@@ -74,6 +78,7 @@ def run_child(reason: str, hook: dict) -> None:
 def main(argv) -> None:
     if not python_ok():
         return
+    os.umask(0o077)
     _setup_path()
     mode = argv[1] if len(argv) > 1 else ''
     if mode == 'session-end':
@@ -81,16 +86,14 @@ def main(argv) -> None:
     elif mode == 'stop':
         hook = read_hook_input(sys.stdin)
         from measured import paths, store
+        if os.path.exists(paths.stopped_path()):
+            return
         cfg = paths.load_config()
         if store.stamp_due(hook.get('session_id') or '', float(cfg.get('stop_every_min') or 15) * 60):
             spawn_child('stop', hook)
-    elif mode == 'child' and len(argv) > 3:
-        import json
-        try:
-            hook = json.loads(argv[3])
-        except ValueError:
-            return
-        run_child(argv[2] if argv[2] in ('session_end', 'stop', 'manual', 'backfill') else 'manual', hook)
+    elif mode == 'child' and len(argv) > 2:
+        run_child(argv[2] if argv[2] in ('session_end', 'stop', 'manual', 'backfill') else 'manual',
+                  read_hook_input(sys.stdin))
     elif mode == 'manual':
         run_child('manual', read_hook_input(sys.stdin))
 

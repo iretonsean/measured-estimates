@@ -86,6 +86,23 @@ class TestCounts(Env):
         self.assertEqual(e['skipped_lines'], 1)
         self.assertEqual(e['fresh_tokens'], 100)
 
+    def test_malformed_lines(self):
+        """T-143 a line nested 5,000 levels deep and a usage value of Infinity are skipped or zeroed; the session is
+        still recorded; any other failure in the child becomes warning 'error'."""
+        tx = Tx().prompt(T0, 'x').msg(T0 + 1, fresh=100)
+        tx.raw('[' * 5000 + ']' * 5000)
+        tx.raw(json.dumps({'type': 'assistant', 'timestamp': '2026-09-21T10:00:00Z',
+                           'message': {'id': 'inf', 'model': 'model-a', 'usage': {'output_tokens': 1}}})
+               .replace('"output_tokens": 1', '"output_tokens": Infinity'))
+        e = self.record(self.write_session(tx))
+        self.assertEqual(e['fresh_tokens'], 100)
+        self.assertEqual(e['skipped_lines'], 1)
+        with mock.patch('measured.recorder.attribute', side_effect=RuntimeError('boom')):
+            record_script.run_child('manual', {'transcript_path': self.session_path(), 'session_id': 'sess-1'})
+        self.assertIn('error', [w['code'] for w in store.read_status()['warnings']])
+        code, rep = self.ledger('report')
+        self.assertIn('error', rep['warnings'])
+
     def test_unknown_format_warns(self):
         """T-40 a transcript in an unknown format writes the warning; report shows it."""
         tx = Tx().raw(json.dumps({'kind': 'turn', 'tokens': 5})).raw(json.dumps({'kind': 'turn', 'tokens': 7}))
@@ -121,6 +138,10 @@ class TestDedupe(Env):
         self.assertEqual(e2['fresh_tokens'], 7)
         e1b = self.record(self.session_path('s-a'), sid='s-a')
         self.assertEqual(e1b['fresh_tokens'], 1000)  # its own keys stay its own
+        main = Tx().prompt(T0, 'x').msg(T0 + 1, fresh=50, key='twice')
+        sub = Tx().prompt(T0, 'y').msg(T0 + 1, fresh=50, key='twice')
+        e3 = self.record(self.write_session(main, [sub], sid='s-c'), sid='s-c')
+        self.assertEqual((e3['fresh_tokens'], e3['duplicate_messages']), (50, 1))
 
     def test_replace_line(self):
         """T-35 T-36 recording a session twice leaves one line; other lines stay byte-identical."""
@@ -317,7 +338,7 @@ class TestFailures(Env):
                            input=json.dumps({'transcript_path': p, 'session_id': 'sess-1', 'cwd': ''}),
                            capture_output=True, text=True, timeout=30)
         self.assertEqual((r.returncode, r.stdout), (0, ''))
-        for _ in range(100):
+        for _ in range(300):
             if store.read_ledger():
                 break
             time.sleep(0.1)

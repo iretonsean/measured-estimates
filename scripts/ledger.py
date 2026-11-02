@@ -135,18 +135,26 @@ def cmd_init(args):
         if remote and remote.lower().startswith('http://'):
             raise Fail('http:// remotes are refused; use ssh or https')
         cfg['sync'] = {**cfg.get('sync', {}), 'remote': remote or None}
-    for d in (paths.ledger_dir(), paths.tasks_dir(), paths.state_dir()):
-        os.makedirs(d, exist_ok=True)
+    for pat in args.ignore or []:
+        if not isinstance(pat, str) or not pat.strip() or len(pat) > 300:
+            raise Fail('--ignore: a folder glob, for example ~/work/client-*')
+        if pat not in cfg.get('ignore_paths', []):
+            cfg['ignore_paths'] = list(cfg.get('ignore_paths') or []) + [pat]
+    for d in (paths.config_dir(), paths.data_dir(), paths.ledger_dir(), paths.tasks_dir(), paths.state_dir()):
+        paths.private_dir(d)
+    if os.path.exists(paths.stopped_path()):
+        os.unlink(paths.stopped_path())  # recording starts again
     cfg['initialized'] = True
     paths.save_config(cfg)
     data = {'config': paths.config_path(), 'store': paths.data_dir(), 'state': paths.state_dir(),
             'machine_id': cfg['machine_id'], 'id_patterns': cfg['id_patterns'], 'commit_ids': cfg['commit_ids'],
             'sync': bool((cfg.get('sync') or {}).get('remote')), 'existed': bool(existed),
+            'ignore_paths': cfg.get('ignore_paths') or [],
             'python': sys.executable, 'python_version': '.'.join(map(str, sys.version_info[:3])), 'version': VERSION}
     text = (f"Ready. Config: {paths.tilde(data['config'])}. Store: {paths.tilde(data['store'])}.\n"
             f"Python: {data['python']} {data['python_version']}.\n"
             f"Task IDs: {', '.join(cfg['id_patterns'])} (commit messages {'used' if cfg['commit_ids'] else 'not used'}).\n"
-            f"Sync: {'on' if data['sync'] else 'off'}.\n"
+            f"Sync: {'on' if data['sync'] else 'off'}. Ignored folders: {', '.join(data['ignore_paths']) or 'none'}.\n"
             "Next: run backfill to read the sessions Claude Code still keeps.")
     emit(args, data, text)
 
@@ -155,6 +163,8 @@ def cmd_backfill(args):
     import adapters
     from adapters.base import Deadline
     from measured.recorder import record
+    if os.path.exists(paths.stopped_path()):
+        raise Fail('recording is off since forget; run init first')
     cfg = paths.ensure_config()
     days = args.days or cfg.get('backfill_days') or 30
     ad = adapters.get('claude-code')
@@ -194,6 +204,8 @@ def cmd_estimate(args):
         raise Fail(f"--size: use one of {', '.join(scale)} or a range such as S-M")
     if args.kind and not KIND_OK.fullmatch(args.kind):
         raise Fail('--kind: at most 32 letters, digits, spaces, _ or -')
+    if args.effort and not re.fullmatch(r'[a-z0-9-]{1,16}', args.effort):
+        raise Fail('--effort: a word such as low, medium or high')
     guess = parse_guess(args.guess)
     lines, view, recs, cal = load_state(cfg)
     own_n = sum(1 for r in recs if cal_mod.norm_size(r.get('size'), scale) == size)
@@ -239,7 +251,8 @@ def cmd_estimate(args):
     n = row.get('n', 0)
     r80 = (est.get('range80') or {}).get('tokens') if n >= TAILS else None
     if r80 is None:
-        notes.append('the 80% range needs 10 tasks')
+        notes.append('the 80% range needs 10 of your tasks of this size' if source == 'own' or n < TAILS
+                      else 'the starter table has no 80% range for this size')
     out = {
         'size': size, 'kind': args.kind, 'effort': args.effort, 'source': source, 'label': label, 'n': n,
         'confidence': row.get('confidence'), 'from': row.get('from'),
@@ -264,9 +277,10 @@ def cmd_estimate(args):
     text = [f"{size}{' ' + args.kind if args.kind else ''} ({label}, n {n}, {out['confidence']}):",
             f"  50% range: {frange(r['tokens'], 'tok')} tokens, {frange(r['active_h'], ' h')} work, "
             f"{frange(r['elapsed_h'], ' h')} elapsed{' (may be too narrow, n small)' if out['narrow'] else ''}",
-            f"  80% range: {frange(r80, 'tok')} tokens" if r80 else '  80% range: needs 10 tasks']
+            f"  80% range: {frange(r80, 'tok')} tokens" if r80 else '  80% range: not enough tasks yet (see note)']
     if out['items_share'] is not None:
-        text.append(f"  Tokens tied to tasks: {out['items_share'] * 100:.0f}% of all tokens; total use is about "
+        text.append(f"  Tokens tied to tasks: {out['items_share'] * 100:.0f}% of all tokens"
+                    f"{' (starter data)' if source == 'starter' else ''}; total use is about "
                     f"x{sig(out['overhead'], 2)} of task tokens.")
     text += [f'  Note: {x}' for x in notes]
     if out['warnings']:
@@ -310,13 +324,14 @@ def cmd_done(args):
     out = {'id': args.id, 'actual': actual, 'error_first': errs['first'], 'error_last': errs['last'],
            'size': t.get('size'), 'kind': t.get('kind')}
     text = [f"{args.id} done: {ftok(actual['fresh'])} tokens tied to it, {actual['active_h']:.2g} h work, "
-            f"{(actual['elapsed_h'] or 0):.2g} h elapsed, {actual['sessions']} sessions."]
+            f"{(actual['elapsed_h'] or 0):.2g} h elapsed, {actual['sessions']} session{'' if actual['sessions'] == 1 else 's'}."]
     if not actual['measured']:
         text.append('  Not measured: most of its tokens are lead work, so the build ran where the ledger did not see '
                     'it. It is left out of the calibration.')
     if errs['first'] is not None:
         last = '' if errs['last'] is None or len(t['estimates']) < 2 else f"; last estimate: {errs['last']:+.2f}"
-        text.append(f"  Against the first estimate: ln(actual/midpoint) = {errs['first']:+.2f}{last}.")
+        text.append(f"  Against the first stored estimate: ln(actual/midpoint) = {errs['first']:+.2f}{last}. "
+                    f"(The report counts only estimates stored before the work started.)")
     else:
         text.append('  No estimate was stored for it (estimate --for).')
     if not t.get('size'):
@@ -354,16 +369,23 @@ def cmd_calibrate(args):
 def cmd_forget(args):
     targets = [paths.config_dir(), paths.data_dir(), paths.state_dir()]
     present = [d for d in targets if os.path.exists(d)]
+    stop_note = ('Recording is off until you run init again. The plugin stays installed; to remove it, run '
+                 '/plugin uninstall measured-estimates.')
     if args.yes:
         for d in present:
             shutil.rmtree(d, ignore_errors=True)
-    data = {'deleted' if args.yes else 'would_delete': present, 'kept': 'Claude Code session files; any sync remote'}
+        # Leave only an empty marker, so this session's own end (and every later one) records nothing until init.
+        paths.private_dir(paths.state_dir())
+        os.close(os.open(paths.stopped_path(), os.O_WRONLY | os.O_CREAT, 0o600))
+    data = {'deleted' if args.yes else 'would_delete': present, 'kept': 'Claude Code session files; any sync remote',
+            'recording': 'off until init' if args.yes else 'on'}
     if args.yes:
-        text = 'Deleted:\n' + '\n'.join(f'  {paths.tilde(d)}' for d in present) if present else 'Nothing to delete.'
+        text = ('Deleted:\n' + '\n'.join(f'  {paths.tilde(d)}' for d in present) if present else 'Nothing to delete.') \
+            + '\n' + stop_note
     else:
         text = ('This deletes:\n' + '\n'.join(f'  {paths.tilde(d)}' for d in present) +
-                '\nRun again with --yes to delete. Claude Code session files and any sync remote are not touched.'
-                if present else 'Nothing to delete.')
+                '\nRun again with --yes to delete. It also turns recording off until you run init again. Claude Code '
+                'session files and any sync remote are not touched.' if present else 'Nothing to delete.')
     emit(args, data, text)
 
 
@@ -383,6 +405,8 @@ def parser():
     s.add_argument('--confirm-ids', action='store_true', help='also use commit messages and git commands')
     s.add_argument('--no-commit-ids', action='store_true', help='stop using commit messages')
     s.add_argument('--sync-remote', help='a private git remote you own ("" turns sync off)')
+    s.add_argument('--ignore', action='append', help='a folder glob not to record, for example ~/work/client-* '
+                                                     '(repeatable; adds to ignore_paths)')
     s.add_argument('--yes', action='store_true', help='ask nothing; use the flags and defaults')
     s.add_argument('--pattern-time-limit', type=float, default=0.05, help=argparse.SUPPRESS)
     s = add('backfill', cmd_backfill, 'record the sessions Claude Code still keeps')
@@ -406,6 +430,7 @@ def parser():
 
 
 def main(argv=None) -> int:
+    os.umask(0o077)
     args = parser().parse_args(argv)
     try:
         args.fn(args)

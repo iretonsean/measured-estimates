@@ -3,12 +3,13 @@
 Format notes (Claude Code 2.1.x): one JSON object per line. Assistant lines carry `message.usage`, `message.model`,
 `message.id`, `requestId`, `timestamp`, `cwd`, and `perTurnEffort` / `effort`. A streamed reply repeats the same
 message id on several lines; the last line for a key wins. Human prompts are `type: user` lines that aren't `isMeta`
-and have string content or text blocks. A change in this format makes `tests/test_adapter.py` (golden sample) fail.
+and have string content or text blocks. A change in this format makes the golden-sample test in `tests/test_record.py` fail.
 """
 from __future__ import annotations
 
 import glob
 import json
+import math
 import os
 import re
 import time
@@ -77,7 +78,7 @@ def read_transcript(path: str, tid: str, deadline: float, want_title: bool = Fal
                 continue
             try:
                 d = json.loads(raw)
-            except ValueError:
+            except (ValueError, RecursionError):
                 skipped += 1
                 continue
             if not isinstance(d, dict):
@@ -140,7 +141,7 @@ def read_transcript(path: str, tid: str, deadline: float, want_title: bool = Fal
 
             def n(k):
                 v = u.get(k)
-                return int(v) if isinstance(v, (int, float)) and v > 0 else 0
+                return int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0 else 0
             msgs[str(key)] = Message(key=str(key), time=at, model=model, effort=effort_of(d),
                                      fresh=n('input_tokens') + n('output_tokens') + n('cache_creation_input_tokens'),
                                      cache_reads=n('cache_read_input_tokens'))
@@ -207,7 +208,7 @@ def first_time(path: str) -> float | None:
                     continue
                 try:
                     v = to_epoch(json.loads(raw).get('timestamp'))
-                except (ValueError, AttributeError):
+                except (ValueError, AttributeError, RecursionError):
                     continue
                 if v is not None:
                     return v

@@ -18,10 +18,11 @@ py=""
 old_ifs=$IFS
 IFS=:
 for d in $PATH:$fallback; do
-  [ -n "$d" ] || continue
+  case "$d" in /*) ;; *) continue;; esac   # only absolute folders: never a python3 in the project folder
   c="$d/python3"
   [ -x "$c" ] || continue
   if [ "$skip_stub" = 1 ] && [ "$c" = "$sys_py" ]; then continue; fi
+  "$c" -c 'import sys; sys.exit(sys.version_info < (3, 9))' >/dev/null 2>&1 </dev/null || continue
   py="$c"
   break
 done

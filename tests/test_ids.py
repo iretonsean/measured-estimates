@@ -73,6 +73,12 @@ class TestInit(Env):
         self.assertRegex(mid, r'^[0-9a-f]{16}$')
         self.assertNotIn(mid, socket.gethostname())
 
+    def test_init_ignore(self):
+        """T-146 init --ignore adds folder globs to ignore_paths (repeatable, kept on a second init)."""
+        self.ledger('init', '--yes', '--ignore', '~/work/client-*', '--ignore', '~/private')
+        self.ledger('init', '--yes', '--ignore', '~/private')
+        self.assertEqual(paths.load_config()['ignore_paths'], ['~/work/client-*', '~/private'])
+
     def test_refused_pattern_keeps_config(self):
         """T-30 T-122 a refused pattern leaves the config unchanged; commit ids need the person's own pattern."""
         self.ledger('init', '--yes')

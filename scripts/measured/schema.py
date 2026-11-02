@@ -72,7 +72,9 @@ def validate(value, schema: dict, path: str = '$') -> list:
 
 def migrate_ledger_line(d: dict) -> dict | None:
     """Version 0 (no schema_version; `fresh_m` in millions) -> 1. Newer than known: returned as is (read only)."""
-    v = int(d.get('schema_version') or 0)
+    v = d.get('schema_version') or 0
+    if isinstance(v, bool) or not isinstance(v, int):
+        return None
     if v == 0:
         d = dict(d)
         if 'fresh_tokens' not in d and isinstance(d.get('fresh_m'), (int, float)):

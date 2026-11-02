@@ -47,6 +47,21 @@ class TestWrapper(Env):
         self.run_wrapper([empty, good_dir], ME_FALLBACK_DIRS='')
         self.assertTrue(os.path.exists(good_marker))  # the search itself works
 
+    def test_relative_and_old_python_skipped(self):
+        """T-148 a python3 in a relative PATH folder never runs; a python3 below 3.9 is passed over for a newer one."""
+        rel_marker = os.path.join(self.tmp, 'rel-ran')
+        rel_dir, _ = self.fake_bin('rel', f'touch "{rel_marker}"')
+        old_marker = os.path.join(self.tmp, 'old-ran')
+        old_dir, _ = self.fake_bin('old', f'case "$1" in -c) exit 1;; esac\ntouch "{old_marker}"')
+        new_marker = os.path.join(self.tmp, 'new-ran')
+        new_dir, _ = self.fake_bin('new', f'touch "{new_marker}"')
+        e = dict(os.environ, PATH=os.pathsep.join(['rel', old_dir, new_dir, self.tools_dir()]), ME_FALLBACK_DIRS='')
+        subprocess.run(['/bin/sh', WRAPPER, 'stop'], input='{}', env=e, cwd=self.tmp, capture_output=True, text=True,
+                       timeout=30)
+        self.assertFalse(os.path.exists(rel_marker))
+        self.assertFalse(os.path.exists(old_marker))
+        self.assertTrue(os.path.exists(new_marker))
+
     def test_macos_stub_skipped(self):
         """T-115 on Darwin without developer tools the system stub is never run; another python3 is used."""
         marker = os.path.join(self.tmp, 'stub-ran')

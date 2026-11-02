@@ -96,17 +96,24 @@ def accuracy(rows):
     return out
 
 
-def cluster_bootstrap(clusters: list, stat, n_boot: int = 10000, seed: int = 20261102):
-    """Resample clusters (lists of items) with replacement; return [stat(items)] per resample. Deterministic: the
-    clusters are used in the order given (the caller sorts them)."""
+def cluster_bootstrap(clusters: list, stat, n_boot: int = 10000, seed: int = 20261102, small_share: list = None):
+    """Resample clusters (lists of item indices) with replacement; return [stat(items)] per resample. Deterministic:
+    the clusters are used in the order given (the caller sorts them). When `small_share` is a list, the share of
+    resamples that hold fewer than SMALL distinct items is appended to it (an interval end from such resamples is a
+    value from fewer than 5 tasks)."""
     rng = random.Random(seed)
     k = len(clusters)
     out = []
+    small = 0
     for _ in range(n_boot):
         items = []
         for _ in range(k):
             items.extend(clusters[rng.randrange(k)])
+        if len(set(items)) < SMALL:
+            small += 1
         out.append(stat(items))
+    if small_share is not None:
+        small_share.append(small / n_boot if n_boot else 1.0)
     return out
 
 

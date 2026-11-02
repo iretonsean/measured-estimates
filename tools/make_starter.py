@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds data/starter.json from an evaluation-input file (docs/EVALUATION.md section 4). Aggregates only (REQ-17):
 per size with at least 5 measured tasks, n, the 50% range and median of tokens, active and elapsed hours, and the 80%
-token range only when n >= 10; 2 significant figures; no IDs, dates or names.
+token range only when n >= 20; 2 significant figures; no IDs, dates or names.
 
   python3 tools/make_starter.py --input <file outside the repo> --out data/starter.json --origin "<one line>"
 """
@@ -16,7 +16,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from evaluate import eligibility, measured  # noqa: E402
 from measured.calibrate import ranges  # noqa: E402
-from measured.stats import SMALL, TAILS, sig  # noqa: E402
+from measured.stats import SMALL, sig  # noqa: E402
+
+STARTER_TAILS = 20  # the starter ships an 80% range only from 20 tasks (ends from fewer are near single tasks)
 
 SIZES = ['XS', 'XS-S', 'S', 'S-M', 'M', 'M-L', 'L', 'L-XL', 'XL']
 
@@ -39,7 +41,7 @@ def build(d: dict, origin: str) -> dict:
                'range50': {k: sig_pair(r['range50'][k]) for k in ('tokens', 'active_h', 'elapsed_h') if r['range50'][k]},
                'median': {k: sig(r['median'][k]) for k in ('tokens', 'active_h', 'elapsed_h') if r['median'][k] is not None},
                'narrow50': bool(r['narrow50'])}
-        if len(lst) >= TAILS:
+        if len(lst) >= STARTER_TAILS:
             row['range80'] = {'tokens': sig_pair(r['range80']['tokens'])}
             row['narrow80'] = bool(r['narrow80'])
         sizes[s] = row

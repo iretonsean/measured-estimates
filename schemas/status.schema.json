@@ -26,7 +26,8 @@
        "format",
        "deadline",
        "lock",
-       "newer-schema"
+       "newer-schema",
+       "error"
       ]
      }
     }

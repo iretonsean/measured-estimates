@@ -46,14 +46,16 @@ def dedupe(s: Session, seen: dict) -> int:
     """Drop messages whose key another session already counted; claim the rest for this session (REQ-03). Returns the
     number dropped. `seen` (hash -> session id) is updated in place."""
     dropped = 0
+    kept = set()  # a key in two transcripts of the same session also counts once
     for t in s.transcripts:
         keep = []
         for m in t.messages:
             h = store.key_hash(m.key)
             owner = seen.get(h)
-            if owner is not None and owner != s.session_id:
+            if (owner is not None and owner != s.session_id) or h in kept:
                 dropped += 1
                 continue
+            kept.add(h)
             seen[h] = s.session_id
             keep.append(m)
         t.messages = keep

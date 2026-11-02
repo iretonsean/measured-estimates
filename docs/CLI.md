@@ -11,23 +11,23 @@ without a major version.
 
 | Command | Keys |
 |---|---|
-| `init` | `config`, `store`, `state`, `machine_id`, `id_patterns`, `commit_ids`, `sync`, `existed`, `python`, `python_version`, `version` |
+| `init` | `config`, `store`, `state`, `machine_id`, `id_patterns`, `commit_ids`, `sync`, `existed`, `ignore_paths`, `python`, `python_version`, `version` |
 | `backfill` | `sessions_found`, `recorded`, `skipped`, `failed`, `oldest`, `days` |
 | `estimate` | `size`, `kind`, `effort`, `source`, `label`, `n`, `confidence`, `from`, `range50`, `range80`, `narrow`, `items_share`, `overhead`, `guess`, `warnings`, `notes` |
 | `done` | `id`, `actual`, `error_first`, `error_last`, `size`, `kind` |
 | `report` | `initialized`, `warnings`, `sync`, `sizes`, `attribution`, `left_out_not_measured`, `accuracy`, `sessions`, `open` |
 | `calibrate` | `sizes`, `attribution`, `data`, `backtest`, `written` |
-| `forget` | `would_delete`, `kept` |
+| `forget` | `would_delete`, `kept`, `recording` |
 
-`forget --yes` prints `deleted` in place of `would_delete`. `report --aggregate` leaves out `open` and `sync`.
+`forget --yes` prints `deleted` in place of `would_delete`, and `recording: "off until init"`. `report --aggregate` leaves out `open` and `sync`.
 
 ## Arguments
 
 | Command | Arguments |
 |---|---|
-| `init` | `--example ID`, `--id-pattern REGEX`, `--confirm-ids`, `--no-commit-ids`, `--sync-remote URL` (`""` turns sync off), `--yes` |
+| `init` | `--example ID`, `--id-pattern REGEX`, `--confirm-ids`, `--no-commit-ids`, `--sync-remote URL` (`""` turns sync off), `--ignore GLOB` (repeatable), `--yes` |
 | `backfill` | `--days N` (default 30) |
-| `estimate` | `--size S` (required), `--kind K`, `--effort E`, `--guess LO-HI` (for example `400k-1.2M`), `--for ID` |
+| `estimate` | `--size S` (required), `--kind K`, `--effort E` (`[a-z0-9-]{1,16}`), `--guess LO-HI` (for example `400k-1.2M`), `--for ID` |
 | `done` | `ID`, `--size S`, `--kind K` |
 | `report` | `--aggregate` |
 | `calibrate` | none |

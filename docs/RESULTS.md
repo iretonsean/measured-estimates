@@ -5,8 +5,9 @@ outside this repo. This file holds no task IDs, titles, single-task values or da
 value from fewer than 5 tasks. `docs/results.json` holds the same numbers.
 
 - Protocol registered in commit `cd59996`, amended once before any run in commit `d6b6962`.
-- Code: commit `d41e8e3`, plus one fix before the final run (see "Deviations").
+- Code: commit `d41e8e3`, plus two fixes to `scripts/evaluate.py` before this final output (see "Deviations").
 - Input: one snapshot; SHA-256 below. Seed 20261102.
+- **Scope:** the test used only tasks that had a size and a guess before the work. The results apply to such tasks.
 
 ## Summary
 
@@ -20,16 +21,20 @@ value from fewer than 5 tasks. `docs/results.json` holds the same numbers.
 | H3-proxy (secondary) | inconclusive (too little data) | see below |
 
 **Why inconclusive.** The registered minimum is 20 test points on at least 8 distinct days. The primary design has 30
-test points, but they fall on 5 days, because the tasks shipped in batches. So no verdict is a pass or a fail. The
-point values favour the calibrated ranges (median error 0.34 against 0.56 for the guesses; an error of 0.69
-means a miss by a factor of 2), but the 90% intervals
-reach above 0, and the sample is too small to tell.
+test points, but they fall on 5 days, because the tasks shipped in batches. So no verdict is a pass or a fail. In the
+primary design the point values favor the calibrated ranges (median error 0.34 against 0.56 for the guesses; an error
+of 0.69 means a miss by a factor of 2), but the 90% intervals reach above 0. The secondary 60/40 cut points the other
+way (D = 0.26 against the guesses: median error 0.65 for the calibrated ranges and
+0.39 for the guesses), and so does the attribution sensitivity (median error
+0.46 for the calibrated ranges and 0.30 for the guesses when untied tokens are added back).
 
-**What this means for a reader.** The data doesn't yet show that calibration beats guesses. It shows a problem with
-the guesses (Baseline below). The calibrated 50% and 80% ranges held the actual cost 67% and 93% of the time, but the
-intervals are wide. More days of finished tasks are needed. The same protocol runs again when the data has them.
+**What this means for a reader.** The data doesn't show that calibration beats guesses. It shows a problem with the
+guesses (Baseline below). The calibrated 50% and 80% ranges held the measured cost 67% and 93% of the time, but the
+intervals are wide; the 80% range's interval lies wholly above 80%, so the 80% ranges may be too wide. More days of
+finished tasks are needed. The same protocol runs again when the data has them.
 
 ## Full output
+
 Input SHA-256: `7c22a846955b33b1ff1137353a0f711e6deb3549ac732195cdad60c6d5533661`. Snapshot: 2026-W45. Seed 20261102, 10000 cluster-bootstrap resamples (by day).
 
 ### Data
@@ -73,26 +78,26 @@ Test points: 30 on 5 days (minimum 20 points and 8 days: NOT met). C fell back t
 
 ### Secondary: 60/40 cut on E1-m
 
-Training 33, test 22 on 4 days, cut in 2026-W42.
+Training 33, test 22 on 4 days, cut in 2026-W42. Intervals hidden: 6% of the resamples held fewer than 5 distinct tasks (small-cell rule).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
-| C calibrated | 22 | 4 | 0.65 [0.25, 0.68] | 0.37 [-0.06, 0.65] | 59% [40%, 75%] | 95% [88%, 100%] |
-| G guess | 22 | 4 | 0.39 [0.33, 0.50] | -0.34 [-0.44, -0.24] | 59% [40%, 75%] | - - |
-| R guess x ratio | 22 | 4 | 0.65 [0.34, 0.72] | 0.54 [0.23, 0.63] | 59% [40%, 75%] | 100% [100%, 100%] |
-| N size-blind | 22 | 4 | 0.44 [0.43, 0.46] | 0.25 [0.08, 0.45] | 73% [62%, 79%] | 95% [93%, 100%] |
+| C calibrated | 22 | 4 | 0.65 - | 0.37 - | 59% - | 95% - |
+| G guess | 22 | 4 | 0.39 - | -0.34 - | 59% - | - - |
+| R guess x ratio | 22 | 4 | 0.65 - | 0.54 - | 59% - | 100% - |
+| N size-blind | 22 | 4 | 0.44 - | 0.25 - | 73% - | 95% - |
 
 | Hypothesis | D (90% CI) | p | verdict (secondary, not deciding) |
 |---|---|---|---|
-| H1a | 0.26 [-0.14, 0.35] | 0.79 | inconclusive (too little data) |
-| H1b | 0.00 [-0.18, 0.01] | 0.63 | inconclusive (too little data) |
-| H1c | 0.20 [-0.20, 0.25] | 0.74 | inconclusive (too little data) |
+| H1a | 0.26 - | 0.79 | inconclusive (too little data) |
+| H1b | 0.00 - | 0.63 | inconclusive (too little data) |
+| H1c | 0.20 - | 0.74 | inconclusive (too little data) |
 
 H2 (secondary): inconclusive; bias label unclear.
 
 ### Sensitivity (numbers only, no verdicts)
 
-**E1_rolling** (n 47, days 5)
+**E1_rolling** (n 47, days 5).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
@@ -101,16 +106,16 @@ H2 (secondary): inconclusive; bias label unclear.
 | R guess x ratio | 47 | 5 | 0.54 [0.27, 0.88] | 0.10 [-0.07, 0.54] | 53% [32%, 76%] | 79% [66%, 100%] |
 | N size-blind | 47 | 5 | 0.70 [0.63, 1.03] | 0.13 [-0.54, 0.66] | 57% [47%, 76%] | 70% [56%, 100%] |
 
-**E1_cut** (n 27, days 2)
+**E1_cut** (n 27, days 2). Intervals hidden: 25% of the resamples held fewer than 5 distinct tasks (small-cell rule).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
-| C calibrated | 27 | 2 | 2.63 [0.43, 2.67] | -2.63 [-2.67, 0.27] | 22% [20%, 50%] | 30% [24%, 100%] |
-| G guess | 27 | 2 | 2.67 [0.22, 2.67] | -2.67 [-2.67, 0.04] | 30% [24%, 100%] | - - |
-| R guess x ratio | 27 | 2 | 2.11 [0.82, 2.11] | -2.11 [-2.11, 0.82] | 22% [0%, 24%] | 37% [32%, 100%] |
-| N size-blind | 27 | 2 | 3.71 [0.33, 3.71] | -3.71 [-3.71, 0.33] | 33% [28%, 100%] | 37% [32%, 100%] |
+| C calibrated | 27 | 2 | 2.63 - | -2.63 - | 22% - | 30% - |
+| G guess | 27 | 2 | 2.67 - | -2.67 - | 30% - | - - |
+| R guess x ratio | 27 | 2 | 2.11 - | -2.11 - | 22% - | 37% - |
+| N size-blind | 27 | 2 | 3.71 - | -3.71 - | 33% - | 37% - |
 
-**arithmetic_midpoint** (n 30, days 5)
+**arithmetic_midpoint** (n 30, days 5).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
@@ -119,7 +124,7 @@ H2 (secondary): inconclusive; bias label unclear.
 | R guess x ratio | 30 | 5 | 0.43 [0.32, 0.67] | -0.04 [-0.31, 0.59] | 67% [33%, 81%] | 93% [86%, 100%] |
 | N size-blind | 30 | 5 | 0.35 [0.26, 0.46] | 0.10 [-0.12, 0.31] | 67% [54%, 85%] | 93% [92%, 100%] |
 
-**C_p50_midpoint** (n 30, days 5)
+**C_p50_midpoint** (n 30, days 5).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
@@ -128,7 +133,7 @@ H2 (secondary): inconclusive; bias label unclear.
 | R guess x ratio | 30 | 5 | 0.42 [0.24, 0.95] | 0.26 [-0.11, 0.95] | 67% [33%, 81%] | 93% [86%, 100%] |
 | N size-blind | 30 | 5 | 0.55 [0.33, 0.75] | 0.34 [0.12, 0.60] | 67% [54%, 85%] | 93% [92%, 100%] |
 
-**attribution_scaled** (n 30, days 5)
+**attribution_scaled** (n 30, days 5).
 
 | Arm | n | days | median error (90% CI) | bias (90% CI) | 50% range held (90% CI) | 80% range held (90% CI) |
 |---|---|---|---|---|---|---|
@@ -168,7 +173,7 @@ Hours (C): active_h: n 30, median error 0.44, 50% range held 57%; elapsed_h: n 3
 | 30 | 200 | 0.65 | 23% |
 | all | 1 | 0.65 | 23% |
 
-D3 = error(all) - error(k = 10) = -0.10 [-0.27, -0.08], n 22, 4 days: **inconclusive (too little data)** (random subsamples, not in time order; a pass does not prove H3).
+D3 = error(all) - error(k = 10) = -0.10 - (interval hidden: small-cell rule), n 22, 4 days: **inconclusive (too little data)** (random subsamples, not in time order; a pass does not prove H3).
 
 ### Effort (description only)
 
@@ -209,5 +214,11 @@ The author's other machines weren't read.
 2. The baseline counts (82 tasks; 51 below, 25 inside, 6 above; median ratio 0.44) differ from the numbers known before
    (0.30x; 55 / 22 / 5 of 82). Section 11 expected this: those numbers used the arithmetic midpoint and another window.
    The README uses the numbers in this file.
+3. Final review (after the evaluation): with few days, many bootstrap resamples hold only one or two days, so an
+   interval end can be a value from fewer than 5 tasks, against section 12. The code now hides every interval of a
+   design in which more than 5% of the resamples hold fewer than 5 distinct tasks. The run was repeated with the same
+   input and seed. Point values, p-values and verdicts are unchanged. Intervals are now hidden for the secondary 60/40
+   cut (6% of resamples), the E1 60/40 sensitivity (25%) and the H3-proxy (6%). The primary design keeps its intervals
+   (1% of resamples).
 
 No other deviations.

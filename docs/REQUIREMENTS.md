@@ -37,6 +37,7 @@ dialog.
 - T-05 (U) With the deadline injected as 0.1 s, the child stops, writes nothing new, and keeps the old line.
 - T-114 (C) The hook process returns in <= 200 ms (p95 of 20 runs) with a 5,000-message fixture.
 - T-116 (U) After a deadline stop, `status.json` holds `deadline` and `report` shows it.
+- T-148 (U) The wrapper skips relative `PATH` folders and any `python3` below 3.9 (it tries the next one).
 - T-06 (U) The hook wrapper exits 0 when no `python3` is found.
 - T-07 (U) Under Python below 3.9 (version check injected) the recorder exits 0 at once.
 - T-115 (U) macOS guard: when the system reports Darwin and `xcode-select -p` fails, the wrapper never runs the system
@@ -155,6 +156,8 @@ must show it. Stamp files older than 7 days must be deleted on each record.
 - T-39 (U) A transcript with a truncated last line records the rest and `skipped_lines: 1`.
 - T-40 (U) A transcript in an unknown format writes the warning and `report` shows it.
 - T-41 (U) The golden sample transcript still parses (a format change in Claude Code fails this test first).
+- T-143 (U) A line nested 5,000 levels deep and a usage value of `Infinity` are skipped or counted as 0; the session is
+  still recorded. Any other failure in the child writes warning code `error`, and `report` shows it.
 - T-136 (U) A stamp file 8 days old is deleted; one 1 day old stays.
 - T-137 (R) The adapter iterates over lines; no `read()` of a whole transcript.
 
@@ -167,6 +170,8 @@ hostnames or user names. From an `ITEM:` or `ROLE:` line it must keep only the m
 - T-42 (U) A fixture full of canary strings (a fake secret, a path, a commit subject, a prompt sentence, a hostname)
   gives ledger lines, task events and `calibration.json` that contain none of them.
 - T-43 (U) The ledger line's keys are exactly the keys allowed by the schema (no extra key).
+- T-142 (I) After `init`, a record and a sync, every folder in the config, store and state folders (the sync clone
+  too) is user-only (0700) and every file 0600 (final review: the hooks and the CLI set `umask 077`).
 
 **REQ-14 Opt-in fields.** The working folder (with the home folder written as `~`), git branch, repo folder name and
 session title must be stored only when the person turns each one on in the config. Default: all off.
@@ -175,6 +180,7 @@ session title must be stored only when the person turns each one on in the confi
 **REQ-43 Ignored folders.** The config must accept `ignore_paths` (glob patterns; `~` allowed). A session whose working
 folder matches one of them must not be recorded, by the hooks or by `backfill`.
 - T-125 (U) A session in `~/work/client-x` with `ignore_paths: ["~/work/client-*"]` writes nothing; others still do.
+- T-146 (U) `init --ignore <glob>` (repeatable) adds to `ignore_paths`; a second `init` keeps them.
 
 **REQ-15 No network by default; safe sync.** The recorder and every `ledger` command must make no network connection
 unless the person sets a sync remote. With a sync remote, sync must:
@@ -196,6 +202,12 @@ unless the person sets a sync remote. With a sync remote, sync must:
 - T-126 (I) An `http://` remote is refused; a failing push writes a `fail` result and `report` shows it; the commit in
   the sync clone holds only this machine's files.
 - T-127 (U) A second sync while the sync lock is held is skipped.
+- T-141 (I) A remote whose branch holds links (`ledger/<own id>.jsonl` to a file outside the store, another machine's
+  file to a secret file, `ledger/` itself to a folder) can't write or read outside the store: the sync clone checks
+  links out as plain files (`core.symlinks false`), the own file is written by replace, linked files and folders are
+  skipped, files are opened without following links.
+- T-144 (I) Records from another machine are checked on read (`store.valid_line`, `store.valid_event`): bad IDs, text
+  in number fields and a bad schema version are skipped; no command fails and no foreign text reaches the agent.
 
 **REQ-16 Delete.** `ledger forget --yes` must delete the store, the config and the state folders (ledger files, task
 events, calibration, stamps, lock, status, the message-key index and the sync clone), and must print what it deleted.
@@ -203,12 +215,15 @@ Without `--yes` it must only list what it would delete. It must never touch Clau
 remote.
 - T-48 (I) After `forget --yes` the three folders are gone; transcripts are unchanged.
 - T-49 (U) `forget` without `--yes` deletes nothing.
+- T-145 (U) After `forget --yes`, no hook and no `backfill` records until `init` runs again; only an empty marker file
+  stays in the state folder, and the output says so.
 
 **REQ-17 Small cells and the starter table.** Everywhere a number is shown or shipped (`report`, `report --aggregate`,
 `estimate`, `starter.json`, `results.json`, `docs/RESULTS.md`, the README), a value computed from fewer than 5 tasks
 must show only its count; p10 and p90 must show only when n >= 10. `data/starter.json` must hold only these keys:
 schema version, origin line, units, the attribution share and overhead, and per size bucket `n`, the 50% range, the 80%
-range (only when n >= 10) and the median of fresh tokens, active hours and elapsed hours. Values are rounded to 2
+range (only when n >= 10; the shipped starter uses n >= 20, because the ends of an 80% range from fewer tasks are near
+single tasks) and the median of fresh tokens, active hours and elapsed hours. Values are rounded to 2
 significant figures. Sizes with fewer than 5 tasks are left out (not merged). No IDs, titles, names, dates of single
 tasks, paths or free text other than the origin line.
 - T-50 (C) A CI script checks the keys of `starter.json` against an allow list and checks n >= 5 per bucket and
@@ -257,6 +272,7 @@ calibration time) to this machine's task events.
 - T-60 (U) The output has every field above; no field is a lone point estimate.
 - T-61 (U) `--for ABC-1` stores the estimate; `--json` output equals the stored event's estimate part.
 - T-62 (U) An unknown size is refused with the list of sizes (exit 1).
+- T-147 (U) `--effort` accepts only `[a-z0-9-]{1,16}`; other text is refused (exit 1) and nothing is stored.
 
 **REQ-22 Own data replaces starter, size by size.** For a size with at least 5 of the person's own measured finished
 tasks, `estimate` must use only own data; with fewer, the starter row labelled `starter, not your data` with the
@@ -463,7 +479,8 @@ not state a number that isn't in `docs/RESULTS.md`.
   `<!-- results:end -->` (the whole section, baseline included) appears in `docs/RESULTS.md`. Normalization: a number
   is a maximal run of digits with an optional decimal part and optional leading minus; `0.30x` gives 0.30; "55 of 82"
   gives 55 and 82; `41%` gives 41; numbers compare as decimals after removing trailing zeros.
-- T-110 (R) Each fail or inconclusive verdict in `docs/RESULTS.md` is stated in the README with its number.
+- T-110 (R) Each primary fail or inconclusive verdict in `docs/RESULTS.md` is stated in the README with its number,
+  and results that point against calibration are stated as plainly as results that point for it.
 
 **REQ-38 Project files.** LICENSE (MIT, "Copyright (c) 2026 Sean Ireton"), CONTRIBUTING (how to add an adapter for
 another agent; starter updates add at least 5 tasks per bucket at a time), issue templates "Add support for <agent>"
@@ -486,7 +503,7 @@ give byte-identical output.
 | REQ | Tests |
 |---|---|
 | REQ-01 | T-01, T-02, T-03 |
-| REQ-02 | T-04, T-05, T-06, T-07, T-114, T-115, T-116 |
+| REQ-02 | T-04, T-05, T-06, T-07, T-114, T-115, T-116, T-148 |
 | REQ-03 | T-08, T-09, T-10, T-117, T-118, T-119 |
 | REQ-04 | T-11, T-12, T-13, T-14 |
 | REQ-05 | T-15, T-16 |
@@ -496,16 +513,16 @@ give byte-identical output.
 | REQ-09 | T-31, T-32, T-33, T-34 |
 | REQ-10 | T-35, T-36 |
 | REQ-11 | T-37, T-38, T-124 |
-| REQ-12 | T-39, T-40, T-41, T-136, T-137 |
-| REQ-13 | T-42, T-43 |
+| REQ-12 | T-39, T-40, T-41, T-136, T-137, T-143 |
+| REQ-13 | T-42, T-43, T-142 |
 | REQ-14 | T-44 |
-| REQ-15 | T-45, T-46, T-47, T-126, T-127 |
-| REQ-16 | T-48, T-49 |
+| REQ-15 | T-45, T-46, T-47, T-126, T-127, T-141, T-144 |
+| REQ-16 | T-48, T-49, T-145 |
 | REQ-17 | T-50, T-51, T-135 |
 | REQ-18 | T-52, T-53, T-54 |
 | REQ-19 | T-55, T-56, T-57 |
 | REQ-20 | T-58, T-59 |
-| REQ-21 | T-60, T-61, T-62 |
+| REQ-21 | T-60, T-61, T-62, T-147 |
 | REQ-22 | T-63, T-64 |
 | REQ-23 | T-65 |
 | REQ-24 | T-66, T-67 |
@@ -527,7 +544,7 @@ give byte-identical output.
 | REQ-40 | T-103, T-104, T-105, T-106, T-107, T-132 |
 | REQ-41 | T-108, T-109, T-110 |
 | REQ-42 | T-111, T-112, T-113 |
-| REQ-43 | T-125 |
+| REQ-43 | T-125, T-146 |
 
 ### Test to requirement
 
@@ -539,7 +556,8 @@ REQ-17; T-52..T-54 REQ-18; T-55..T-57 REQ-19; T-58..T-59 REQ-20; T-60..T-62 REQ-
 T-66..T-67 REQ-24; T-68..T-70, T-129 REQ-25; T-71..T-77, T-130, T-131 REQ-26; T-78..T-80, T-133 REQ-27; T-81 REQ-28;
 T-82..T-84 REQ-29; T-85..T-86 REQ-30; T-87..T-89 REQ-31; T-90..T-92, T-138 REQ-32; T-93 REQ-33; T-94, T-128 REQ-34;
 T-95 REQ-35; T-96, T-97, T-134 REQ-36; T-98 REQ-37; T-99 REQ-38; T-100..T-102, T-140 REQ-39; T-103..T-107, T-132
-REQ-40; T-108..T-110 REQ-41; T-111..T-113 REQ-42; T-125 REQ-43. T-139 isn't used.
+REQ-40; T-108..T-110 REQ-41; T-111..T-113 REQ-42; T-125 REQ-43. Added in the final-review fix round: T-141, T-144 REQ-15; T-142 REQ-13; T-143 REQ-12; T-145 REQ-16;
+T-146 REQ-43; T-147 REQ-21; T-148 REQ-02. T-139 isn't used.
 
 In the code, each unit or integration test names its T-ID in its docstring, and `tests/test_traceability.py` checks
 that every T-ID of type U and I in this file has a test and every T-ID of type C has a CI step that names it, and

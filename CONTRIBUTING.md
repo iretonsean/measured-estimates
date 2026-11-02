@@ -27,7 +27,7 @@ Please test with Codex or another agent that you use, and send a pull request. O
 - Python 3.9 or newer, standard library only.
 - The hook never blocks or slows a session. Every error exits 0.
 - No network calls, except the sync that the person turns on.
-- Every requirement in `docs/REQUIREMENTS.md` keeps a test. New behaviour gets a requirement and a test.
+- Every requirement in `docs/REQUIREMENTS.md` keeps a test. New behavior gets a requirement and a test.
 - Update `docs/DATA.md` when you add a stored field.
 - The README uses ASD-STE100 Simplified Technical English. CI checks the sentence length.
 

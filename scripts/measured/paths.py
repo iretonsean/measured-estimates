@@ -30,6 +30,26 @@ def state_dir() -> str:
     return _xdg('XDG_STATE_HOME', os.path.join('.local', 'state'))
 
 
+def private_dir(d: str) -> str:
+    """Create a folder for this tool's data, user-only (0700), and return it (SHOULD-1 of the final review)."""
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(d, 0o700)
+    except OSError:
+        pass
+    return d
+
+
+def secure_umask() -> None:
+    """Files and folders this process (and git, when it syncs) creates are user-only."""
+    os.umask(0o077)
+
+
+def stopped_path() -> str:
+    """A marker that `forget --yes` leaves: no recording until `init` runs again."""
+    return os.path.join(state_dir(), 'stopped')
+
+
 def config_path() -> str:
     return os.path.join(config_dir(), 'config.json')
 
@@ -127,7 +147,7 @@ def save_config(cfg: dict) -> None:
     from .store import atomic_write
     out = {k: v for k, v in cfg.items() if not k.startswith('_')}
     out['schema_version'] = SCHEMA_VERSION
-    os.makedirs(config_dir(), exist_ok=True)
+    private_dir(config_dir())
     atomic_write(config_path(), json.dumps(out, indent=2, sort_keys=True) + '\n')
 
 

@@ -7,6 +7,7 @@ reflogs in the common dir survive `git worktree remove`.
 from __future__ import annotations
 
 import os
+import stat
 
 from .ids import MAX_SCAN
 
@@ -50,6 +51,8 @@ def find_gitdir(path: str):
 
 def _parse_reflog(path: str, since: float, until: float, out: dict) -> None:
     try:
+        if not stat.S_ISREG(os.stat(path).st_mode):  # never block on a FIFO or a device
+            return
         f = open(path, encoding='utf-8', errors='replace')
     except OSError:
         return

@@ -35,6 +35,12 @@ Commit subjects and command text are read in memory to find task IDs, then dropp
 The same paths are used on macOS and Linux. Files from other machines (through your sync) sit next to your own in
 `ledger/` and `tasks/`.
 
+All three folders, the sync clone and every file in them are user-only: folders 0700, files 0600. The hooks and the
+`ledger` command set `umask 077`, so git's files in the sync clone are user-only too.
+
+After `ledger forget --yes`, the state folder holds only an empty file `stopped`. While it's there, nothing is
+recorded. `ledger init` removes it.
+
 ## Every field stored
 
 ### Ledger line (`ledger/<machine-id>.jsonl`, one JSON object per session, `schema_version: 1`)
@@ -105,9 +111,9 @@ counts, not task IDs.
 ### State files
 
 - Stamp files are empty; their name is the session id and only their time is used. `lock` is empty.
-- `status.json`: `{schema_version, warnings: [{at, code}], sync: {at, result, code}}`. Codes are fixed words
-  (`format`, `deadline`, `lock`, `sync-auth`, `sync-network`, `sync-conflict`, `sync-timeout`, `sync-refused`), never
-  transcript text or git output.
+- `status.json`: `{schema_version, warnings: [{at, code}], sync: {at, result, code}}`. Codes are fixed words, never
+  transcript text or git output. Warning codes: `format`, `deadline`, `lock`, `newer-schema`, `error`. Sync codes:
+  `ok`, `sync-auth`, `sync-network`, `sync-conflict`, `sync-timeout`, `sync-refused`, `sync-error`.
 - `seen.idx`: one line per counted message: the first 16 hex chars of the SHA-256 of the message key, and the session
   id that owns it. It holds no message content.
 - `sync/`: a git clone of your sync remote, holding the files listed under "Sync".
@@ -125,7 +131,7 @@ counts, not task IDs.
 |---|---|---|
 | `store.cwd`, `store.branch`, `store.repo`, `store.title` | off | adds that field to new ledger lines |
 | `commit_ids` | off | uses commit subjects and git commands to tie untagged work to tasks |
-| `ignore_paths` | empty | sessions in matching folders aren't recorded |
+| `ignore_paths` | empty | sessions in matching folders aren't recorded; add one with `ledger init --ignore '<glob>'` |
 | `sync.remote` | none | turns on sync (below). Use a private repo you control. `http://` remotes are refused |
 
 ## Sync (only when you set `sync.remote`)
@@ -139,10 +145,20 @@ only your two files by path, pulls with rebase, pushes, retries once, and stops 
 password (prompts are turned off), and a failure shows in `ledger report`. It then copies the other machines' files
 from the sync clone into your store.
 
+Remote: use an SSH remote. An HTTPS remote works only with a credential helper set in your own `~/.gitconfig` (for
+example `gh auth setup-git`). Sync turns off git's system settings (`GIT_CONFIG_NOSYSTEM=1`), so it can never show a
+keychain dialog. An SSH agent that asks for approval in a window can still show its own prompt; use a key without that
+step for sync.
+
+What comes back from the remote isn't trusted. The sync clone checks links out as plain files (`core.symlinks false`).
+Your own files are written by replace, never through a link. Files from other machines are copied only when they're
+regular files of at most 50 MB with a machine-id name, opened without following links. Each line is checked before
+any command uses it (`store.valid_line`, `store.valid_event`); a line that fails the check is skipped.
+
 ## The starter table (`data/starter.json`, shipped in the repo)
 
 Aggregates from the author's own work only: per size bucket with at least 5 tasks, `n`, the 50% range and median of
-fresh tokens, active hours and elapsed hours, and the 80% range only when n >= 10; the attribution share and overhead;
+fresh tokens, active hours and elapsed hours, and the 80% range only when n >= 20; the attribution share and overhead;
 one origin line. Values are rounded to 2 significant figures. No task IDs, titles, project or client names, dates of
 single tasks, prompts, paths or machine names. CI checks the keys and the counts (REQ-17). Later releases add tasks in
 steps of at least 5 per bucket, so a diff of two releases can't show one task's cost.
