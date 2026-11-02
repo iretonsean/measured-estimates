@@ -2,7 +2,7 @@
 
 Versions follow semantic versioning. Data files carry their own `schema_version` (see `docs/DATA.md`).
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-02)
 
 - First version: Claude Code plugin with a SessionEnd hook (detached recorder) and an async Stop hook.
 - `ledger` commands: `init`, `backfill`, `estimate`, `done`, `report`, `calibrate`, `forget`, all with `--json`.
