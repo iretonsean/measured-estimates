@@ -68,6 +68,6 @@ developer tools, so the real no-tools path wasn't run.
 
 ## Earlier runs (Phase 3, 2026-11-02, before the final fix round)
 
-The same Linux and macOS install tests passed on commit `018e44d`'s code. The Linux real-session tests then ran in a
+The same Linux and macOS install tests passed on commit `e448587`'s code. The Linux real-session tests then ran in a
 scratch home with a temporary copy of the login file, deleted right after. That method is no longer used. The real
 sessions above replace those runs.

@@ -4,8 +4,8 @@ Aggregate output of the pre-registered evaluation (`docs/EVALUATION.md`), run on
 outside this repo. This file holds no task IDs, titles, single-task values or dates finer than an ISO week, and no
 value from fewer than 5 tasks. `docs/results.json` holds the same numbers.
 
-- Protocol registered in commit `cd59996`, amended once before any run in commit `d6b6962`.
-- Code: commit `d41e8e3`, plus two fixes to `scripts/evaluate.py` before this final output (see "Deviations").
+- Protocol registered in commit `33e98cf`, amended once before any run in commit `ecbfcd0`.
+- Code: commit `e70d61e`, plus two fixes to `scripts/evaluate.py` before this final output (see "Deviations").
 - Input: one snapshot; SHA-256 below. Seed 20261102.
 - **Scope:** the test used only tasks that had a size and a guess before the work. The results apply to such tasks.
 
