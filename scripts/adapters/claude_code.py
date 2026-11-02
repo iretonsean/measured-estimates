@@ -16,13 +16,12 @@ import time
 from datetime import datetime
 
 from measured.ids import MAX_SCAN, tag_lines
+from measured.store import EFFORT_OK, MODEL_OK
 
 from .base import Adapter, Deadline, Message, Prompt, Session, ToolEvent, Transcript
 
 GIT_COMMIT = re.compile(r'\bgit\b[^|;&\n]{0,200}?\bcommit\b')
 LEAD_CMD = re.compile(r'\bgit\b[^|;&\n]{0,200}?\b(?:push|merge)\b|\bgh\s+(?:pr|run)\b')
-EFFORT_OK = re.compile(r'[a-z0-9-]{1,16}')
-MODEL_OK = re.compile(r'[A-Za-z0-9._:/@-]{1,64}')
 AGENT_TOOLS = {'Agent': 'prompt', 'Task': 'prompt', 'SendMessage': 'message'}
 CHECK_EVERY = 200  # lines between deadline checks
 

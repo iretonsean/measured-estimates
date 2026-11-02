@@ -2,6 +2,11 @@
 
 Versions follow semantic versioning. Data files carry their own `schema_version` (see `docs/DATA.md`).
 
+## Unreleased
+
+- Records from another machine are now skipped when a task's model or effort names aren't plain names (T-144).
+- The skill finds the plugin only in its own marketplace folder when `CLAUDE_PLUGIN_ROOT` isn't set.
+
 ## 0.1.0 (2026-11-02)
 
 - First version: Claude Code plugin with a SessionEnd hook (detached recorder) and an async Stop hook.

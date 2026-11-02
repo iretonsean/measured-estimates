@@ -19,7 +19,7 @@ that aren't in that file.
 Use this line in each Bash call. It works when the plugin path is set and when it isn't:
 
 ```sh
-ME="${CLAUDE_PLUGIN_ROOT:-$(ls -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/*/measured-estimates/*/ 2>/dev/null | sort -V | tail -1)}"; python3 "$ME/scripts/ledger.py" report
+ME="${CLAUDE_PLUGIN_ROOT:-$(ls -d "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/plugins/cache/measured-estimates/measured-estimates/*/ 2>/dev/null | sort -V | tail -1)}"; python3 "$ME/scripts/ledger.py" report
 ```
 
 Below, `ledger` means `python3 "$ME/scripts/ledger.py"`. Add `--json` to read the output as data.

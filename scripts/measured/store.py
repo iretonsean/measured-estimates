@@ -122,6 +122,8 @@ def ledger_file(machine_id: str) -> str:
 KEY_OK = re.compile(r'[A-Za-z0-9#._:-]{1,64}')
 TS_OK = re.compile(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ')
 MACHINE_OK = re.compile(r'[0-9a-f]{16}')
+EFFORT_OK = re.compile(r'[a-z0-9-]{1,16}')
+MODEL_OK = re.compile(r'[A-Za-z0-9._:/@-]{1,64}')
 
 
 def _num(v) -> bool:
@@ -152,8 +154,10 @@ def valid_line(d: dict) -> bool:
                 k2 in ('build', 'review', 'fix', 'lead') and _num(x) for k2, x in v.get('by_role', {}).items()):
             return False
         bme = v.get('by_model_effort', {})
-        if not isinstance(bme, dict) or not all(isinstance(es, dict) and all(_num(x) for x in es.values())
-                                                for es in bme.values()):
+        if not isinstance(bme, dict) or not all(
+                isinstance(mo, str) and MODEL_OK.fullmatch(mo) and isinstance(es, dict)
+                and all(isinstance(e, str) and EFFORT_OK.fullmatch(e) and _num(x) for e, x in es.items())
+                for mo, es in bme.items()):
             return False
     return True
 
